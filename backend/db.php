@@ -10,11 +10,19 @@ function db(): PDO
         return $pdo;
     }
 
-    $host = getenv('DB_HOST') ?: 'db';
-    $port = getenv('DB_PORT') ?: '3306';
-    $database = getenv('DB_NAME') ?: 'darcan';
-    $user = getenv('DB_USER') ?: 'user';
-    $password = getenv('DB_PASSWORD') ?: 'password';
+    <?php
+$host = getenv("MYSQLHOST");
+$user = getenv("MYSQLUSER");
+$password = getenv("MYSQLPASSWORD");
+$dbname = getenv("MYSQLDATABASE");
+$port = getenv("MYSQLPORT");
+
+$conn = new mysqli($host, $user, $password, $dbname, $port);
+
+if ($conn->connect_error) {
+    die("Erro na conexão: " . $conn->connect_error);
+}
+?>
 
     $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', $host, $port, $database);
 
