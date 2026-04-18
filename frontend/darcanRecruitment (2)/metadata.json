@@ -1,0 +1,7 @@
+{
+  "name": "Darcan Recruitment System",
+  "description": "A comprehensive recruitment management platform with portals for candidates, managers, and administrators, featuring job management, timed online testing, and interview scheduling.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
