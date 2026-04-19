@@ -9,20 +9,11 @@ function db(): PDO
     if ($pdo instanceof PDO) {
         return $pdo;
     }
-
-    <?php
-$host = getenv("MYSQLHOST");
-$user = getenv("MYSQLUSER");
-$password = getenv("MYSQLPASSWORD");
-$dbname = getenv("MYSQLDATABASE");
-$port = getenv("MYSQLPORT");
-
-$conn = new mysqli($host, $user, $password, $dbname, $port);
-
-if ($conn->connect_error) {
-    die("Erro na conexão: " . $conn->connect_error);
-}
-?>
+    $host = getenv('MYSQLHOST') ?: 'db';
+    $user = getenv('MYSQLUSER') ?: 'user';
+    $password = getenv('MYSQLPASSWORD') ?: 'password';
+    $database = getenv('MYSQLDATABASE') ?: 'darcan';
+    $port = getenv('MYSQLPORT') ?: '3306';
 
     $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', $host, $port, $database);
 
@@ -862,3 +853,4 @@ function upsert_test(PDO $pdo, array $payload): void
         ]);
     }
 }
+
