@@ -3,7 +3,7 @@ FROM php:8.2-apache
 WORKDIR /var/www/html
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends $PHPIZE_DEPS \
+    && apt-get install -y --no-install-recommends $PHPIZE_DEPS ca-certificates \
     && pecl install redis \
     && docker-php-ext-install pdo pdo_mysql mysqli opcache \
     && docker-php-ext-enable redis opcache \

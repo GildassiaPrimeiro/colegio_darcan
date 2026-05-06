@@ -33,6 +33,17 @@ function env_bool(string $key, bool $default): bool
     return $parsed ?? $default;
 }
 
+function env_nullable_string(string $key): ?string
+{
+    $value = getenv($key);
+    if ($value === false) {
+        return null;
+    }
+
+    $trimmed = trim((string) $value);
+    return $trimmed === '' ? null : $trimmed;
+}
+
 function app_env(): string
 {
     return strtolower(env_string('APP_ENV', 'development'));
@@ -223,6 +234,8 @@ function db(): PDO
     $password = env_string('MYSQLPASSWORD', 'password');
     $database = env_string('MYSQLDATABASE', 'darcan');
     $port = env_string('MYSQLPORT', '3306');
+    $sslCa = env_nullable_string('MYSQL_SSL_CA');
+    $sslVerifyServerCert = env_bool('MYSQL_SSL_VERIFY_SERVER_CERT', true);
 
     $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', $host, $port, $database);
 
@@ -231,10 +244,20 @@ function db(): PDO
 
     for ($attempt = 1; $attempt <= $attempts; $attempt += 1) {
         try {
-            $pdo = new PDO($dsn, $user, $password, [
+            $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            ]);
+            ];
+
+            if (defined('PDO::MYSQL_ATTR_SSL_CA') && $sslCa !== null) {
+                $options[PDO::MYSQL_ATTR_SSL_CA] = $sslCa;
+            }
+
+            if (defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')) {
+                $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = $sslVerifyServerCert;
+            }
+
+            $pdo = new PDO($dsn, $user, $password, $options);
             return $pdo;
         } catch (PDOException $exception) {
             $lastException = $exception;
