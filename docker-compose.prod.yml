@@ -1,0 +1,66 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: darcan_frontend_prod
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_BASE_URL: "${VITE_API_BASE_URL:-http://localhost:8000/api}"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: darcan_backend_prod
+    restart: always
+    ports:
+      - "8000:80"
+    environment:
+      APP_ENV: production
+      APP_ENABLE_DEFAULT_ADMINS: "false"
+      APP_ENABLE_DEMO_SEED: "false"
+      STATE_CACHE_TTL: "${STATE_CACHE_TTL:-15}"
+      MYSQLHOST: "${MYSQLHOST}"
+      MYSQLPORT: "${MYSQLPORT:-3306}"
+      MYSQLDATABASE: "${MYSQLDATABASE}"
+      MYSQLUSER: "${MYSQLUSER}"
+      MYSQLPASSWORD: "${MYSQLPASSWORD}"
+      REDIS_URL: "${REDIS_URL:-}"
+      REDIS_HOST: "${REDIS_HOST:-}"
+      REDIS_PORT: "${REDIS_PORT:-6379}"
+      REDIS_DB: "${REDIS_DB:-0}"
+      REDIS_PREFIX: "${REDIS_PREFIX:-darcan:}"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8
+    container_name: darcan_mysql_prod
+    restart: always
+    command:
+      - --innodb-flush-log-at-trx-commit=1
+      - --sync-binlog=1
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${MYSQLDATABASE}"
+      MYSQL_USER: "${MYSQLUSER}"
+      MYSQL_PASSWORD: "${MYSQLPASSWORD}"
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data_prod:/var/lib/mysql
+      - ./backend/mysql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  db_data_prod:

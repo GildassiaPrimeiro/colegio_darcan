@@ -22,6 +22,11 @@ function json_response(array $payload, int $status = 200): void
     exit;
 }
 
+function state_response(PDO $pdo, int $status = 200, bool $forceFresh = false): void
+{
+    json_response(['ok' => true, 'data' => fetch_state($pdo, $forceFresh)], $status);
+}
+
 function request_json(): array
 {
     $raw = file_get_contents('php://input');
@@ -174,6 +179,10 @@ $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $method = $_SERVER['REQUEST_METHOD'];
 $body = request_json();
 
+if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+    invalidate_state_cache();
+}
+
 try {
     if (!$pdo instanceof PDO) {
         bootstrap_database();
@@ -188,8 +197,22 @@ try {
         ]);
     }
 
+    if ($path === '/api/health' && $method === 'GET') {
+        json_response([
+            'ok' => true,
+            'data' => [
+                'environment' => app_env(),
+                'database' => 'connected',
+                'redis' => cache_is_available() ? 'connected' : 'disabled_or_unavailable',
+                'stateCacheTtlSeconds' => state_cache_ttl(),
+                'defaultAdminsSeedEnabled' => should_seed_default_admins(),
+                'demoSeedEnabled' => should_seed_demo_data(),
+            ],
+        ]);
+    }
+
     if ($path === '/api/state' && $method === 'GET') {
-        json_response(['ok' => true, 'data' => fetch_state($pdo)]);
+        state_response($pdo);
     }
 
     if ($path === '/api/auth/login' && $method === 'POST') {

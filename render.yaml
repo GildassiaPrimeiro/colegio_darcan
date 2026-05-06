@@ -7,6 +7,14 @@ services:
     dockerfilePath: ./backend/Dockerfile
     healthCheckPath: /
     envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_ENABLE_DEFAULT_ADMINS
+        value: false
+      - key: APP_ENABLE_DEMO_SEED
+        value: false
+      - key: STATE_CACHE_TTL
+        value: 15
       - key: MYSQLHOST
         sync: false
       - key: MYSQLPORT
@@ -16,4 +24,6 @@ services:
       - key: MYSQLUSER
         sync: false
       - key: MYSQLPASSWORD
+        sync: false
+      - key: REDIS_URL
         sync: false

@@ -82,7 +82,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ initialMode, onAuth, onBack, compan
               {role === UserRole.ADMIN ? (
                 <>Gestão centralizada e <span className="text-emerald-400">controlo total</span>.</>
               ) : (
-                <>A porta de entrada para o seu <span className="text-emerald-400">futuro brilhante</span>.</>
+                <>A porta de entrada para os melhores talentos e as maiores oportunidades <span className="text-emerald-400">Só aqui no Sistema Darcan</span>.</>
               )}
             </h2>
             <p className="text-white/80 text-lg max-w-md">

@@ -74,7 +74,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onRegister, onLogin, onExplor
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
           <div className="flex-1 text-center lg:text-left order-2 lg:order-1">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-tight">
-              Sua carreira de <span className="text-green-600">sucesso</span> começa aqui na {systemConfig.companyName}.
+              Sua carreira de <span className="text-green-600">sucesso</span> começa aqui no {systemConfig.companyName}.
             </h1>
             <p className="mt-6 text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto lg:mx-0">
               Simplificamos o processo de recrutamento para que você encontre a vaga ideal e mostre seu potencial através de nossos testes de nivelamento.

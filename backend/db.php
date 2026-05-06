@@ -2,6 +2,215 @@
 
 declare(strict_types=1);
 
+function env_string(string $key, string $default = ''): string
+{
+    $value = getenv($key);
+    if ($value === false || $value === '') {
+        return $default;
+    }
+
+    return (string) $value;
+}
+
+function env_int(string $key, int $default): int
+{
+    $value = getenv($key);
+    if ($value === false || $value === '') {
+        return $default;
+    }
+
+    return is_numeric($value) ? (int) $value : $default;
+}
+
+function env_bool(string $key, bool $default): bool
+{
+    $value = getenv($key);
+    if ($value === false || $value === '') {
+        return $default;
+    }
+
+    $parsed = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+    return $parsed ?? $default;
+}
+
+function app_env(): string
+{
+    return strtolower(env_string('APP_ENV', 'development'));
+}
+
+function is_production_env(): bool
+{
+    return in_array(app_env(), ['prod', 'production'], true);
+}
+
+function should_seed_default_admins(): bool
+{
+    return env_bool('APP_ENABLE_DEFAULT_ADMINS', !is_production_env());
+}
+
+function should_seed_demo_data(): bool
+{
+    return env_bool('APP_ENABLE_DEMO_SEED', !is_production_env());
+}
+
+function state_cache_ttl(): int
+{
+    return max(0, env_int('STATE_CACHE_TTL', 15));
+}
+
+function redis_config(): array
+{
+    $url = env_string('REDIS_URL');
+    if ($url !== '') {
+        $parts = parse_url($url);
+        if ($parts !== false && isset($parts['host'])) {
+            $database = 0;
+            if (isset($parts['path'])) {
+                $database = max(0, (int) ltrim((string) $parts['path'], '/'));
+            }
+
+            return [
+                'enabled' => true,
+                'scheme' => $parts['scheme'] ?? 'redis',
+                'host' => $parts['host'],
+                'port' => isset($parts['port']) ? (int) $parts['port'] : 6379,
+                'password' => $parts['pass'] ?? env_string('REDIS_PASSWORD'),
+                'database' => $database,
+                'timeout' => (float) env_string('REDIS_TIMEOUT', '1.5'),
+                'prefix' => env_string('REDIS_PREFIX', 'darcan:'),
+            ];
+        }
+    }
+
+    $host = env_string('REDIS_HOST');
+    if ($host === '') {
+        return [
+            'enabled' => false,
+            'scheme' => 'redis',
+            'host' => '',
+            'port' => 6379,
+            'password' => '',
+            'database' => 0,
+            'timeout' => 1.5,
+            'prefix' => env_string('REDIS_PREFIX', 'darcan:'),
+        ];
+    }
+
+    return [
+        'enabled' => true,
+        'scheme' => env_string('REDIS_SCHEME', 'redis'),
+        'host' => $host,
+        'port' => env_int('REDIS_PORT', 6379),
+        'password' => env_string('REDIS_PASSWORD'),
+        'database' => env_int('REDIS_DB', 0),
+        'timeout' => (float) env_string('REDIS_TIMEOUT', '1.5'),
+        'prefix' => env_string('REDIS_PREFIX', 'darcan:'),
+    ];
+}
+
+function cache_is_available(): bool
+{
+    return redis_client() !== null;
+}
+
+function redis_client(): ?object
+{
+    static $client = false;
+
+    if ($client !== false) {
+        return $client;
+    }
+
+    if (!class_exists('Redis')) {
+        $client = null;
+        return $client;
+    }
+
+    $config = redis_config();
+    if (($config['enabled'] ?? false) !== true) {
+        $client = null;
+        return $client;
+    }
+
+    try {
+        $redis = new Redis();
+        $redis->connect($config['host'], (int) $config['port'], (float) $config['timeout']);
+
+        if (($config['password'] ?? '') !== '') {
+            $redis->auth((string) $config['password']);
+        }
+
+        $database = (int) ($config['database'] ?? 0);
+        if ($database > 0) {
+            $redis->select($database);
+        }
+
+        $redis->ping();
+        $client = $redis;
+    } catch (Throwable $exception) {
+        $client = null;
+    }
+
+    return $client;
+}
+
+function cache_key(string $key): string
+{
+    $config = redis_config();
+    return (string) ($config['prefix'] ?? 'darcan:') . $key;
+}
+
+function cache_get(string $key): ?string
+{
+    $redis = redis_client();
+    if ($redis === null) {
+        return null;
+    }
+
+    try {
+        $value = $redis->get(cache_key($key));
+        return is_string($value) ? $value : null;
+    } catch (Throwable $exception) {
+        return null;
+    }
+}
+
+function cache_set(string $key, string $value, int $ttlSeconds = 60): void
+{
+    $redis = redis_client();
+    if ($redis === null) {
+        return;
+    }
+
+    try {
+        if ($ttlSeconds > 0) {
+            $redis->setex(cache_key($key), $ttlSeconds, $value);
+            return;
+        }
+
+        $redis->set(cache_key($key), $value);
+    } catch (Throwable $exception) {
+    }
+}
+
+function cache_delete(string $key): void
+{
+    $redis = redis_client();
+    if ($redis === null) {
+        return;
+    }
+
+    try {
+        $redis->del(cache_key($key));
+    } catch (Throwable $exception) {
+    }
+}
+
+function invalidate_state_cache(): void
+{
+    cache_delete('state:full');
+}
+
 function db(): PDO
 {
     static $pdo = null;
@@ -9,11 +218,11 @@ function db(): PDO
     if ($pdo instanceof PDO) {
         return $pdo;
     }
-    $host = getenv('MYSQLHOST') ?: 'db';
-    $user = getenv('MYSQLUSER') ?: 'user';
-    $password = getenv('MYSQLPASSWORD') ?: 'password';
-    $database = getenv('MYSQLDATABASE') ?: 'darcan';
-    $port = getenv('MYSQLPORT') ?: '3306';
+    $host = env_string('MYSQLHOST', 'db');
+    $user = env_string('MYSQLUSER', 'user');
+    $password = env_string('MYSQLPASSWORD', 'password');
+    $database = env_string('MYSQLDATABASE', 'darcan');
+    $port = env_string('MYSQLPORT', '3306');
 
     $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', $host, $port, $database);
 
@@ -75,7 +284,16 @@ function bootstrap_database(): void
     }
 
     run_migrations($pdo);
-    seed_database($pdo);
+    seed_system_config($pdo);
+
+    if (should_seed_default_admins()) {
+        seed_default_admins($pdo);
+    }
+
+    if (should_seed_demo_data()) {
+        seed_demo_data($pdo);
+    }
+
     $bootstrapped = true;
 }
 
@@ -242,7 +460,7 @@ function clear_legacy_audit_logs_once(PDO $pdo): void
     $insertStmt->execute(['id' => $markerId]);
 }
 
-function seed_database(PDO $pdo): void
+function seed_default_admins(PDO $pdo): void
 {
     $defaultUsers = [
         [
@@ -290,7 +508,10 @@ function seed_database(PDO $pdo): void
             'is_blocked' => $user['is_blocked'],
         ]);
     }
+}
 
+function seed_system_config(PDO $pdo): void
+{
     $configExists = (int) $pdo->query('SELECT COUNT(*) FROM system_config WHERE id = 1')->fetchColumn();
     if ($configExists === 0) {
         $stmt = $pdo->prepare(
@@ -323,7 +544,10 @@ function seed_database(PDO $pdo): void
             'overview_subtitle' => 'Informacoes principais da plataforma',
         ]);
     }
+}
 
+function seed_demo_data(PDO $pdo): void
+{
     $jobs = [
         [
             'id' => 'job-1',
@@ -772,8 +996,18 @@ function fetch_audit_logs(PDO $pdo): array
     }, $rows);
 }
 
-function fetch_state(PDO $pdo): array
+function fetch_state(PDO $pdo, bool $forceFresh = false): array
 {
+    if (!$forceFresh) {
+        $cached = cache_get('state:full');
+        if ($cached !== null) {
+            $decoded = json_decode($cached, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+    }
+
     $users = fetch_users($pdo);
     $adminUser = null;
     $candidates = [];
@@ -789,7 +1023,7 @@ function fetch_state(PDO $pdo): array
         }
     }
 
-    return [
+    $state = [
         'users' => $users,
         'adminUser' => $adminUser,
         'candidates' => $candidates,
@@ -802,6 +1036,13 @@ function fetch_state(PDO $pdo): array
         'auditLogs' => fetch_audit_logs($pdo),
         'systemConfig' => fetch_system_config($pdo),
     ];
+
+    $encodedState = json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if (is_string($encodedState)) {
+        cache_set('state:full', $encodedState, state_cache_ttl());
+    }
+
+    return $state;
 }
 
 function upsert_test(PDO $pdo, array $payload): void
