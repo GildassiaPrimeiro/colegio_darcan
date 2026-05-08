@@ -14,6 +14,10 @@ export interface AppState {
   systemConfig: SystemConfig;
 }
 
+export interface BootstrapState {
+  systemConfig: SystemConfig;
+}
+
 type RequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown;
 };
@@ -99,6 +103,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 }
 
 export const api = {
+  getBootstrap: () => request<BootstrapState>('/bootstrap'),
   getState: () => request<AppState>('/state'),
   login: (data: { email: string; password: string }) => request<AppState>('/auth/login', { method: 'POST', body: data }),
   logout: (userId?: string) => request<AppState>('/auth/logout', { method: 'POST', body: { userId } }),
@@ -114,6 +119,7 @@ export const api = {
   updateApplicationStatus: (id: string, payload: Partial<Application> & { status: string }) => request<AppState>(`/applications/${id}/status`, { method: 'PUT', body: payload }),
   updateUserProfile: (id: string, updates: Partial<User>) => request<AppState>(`/users/${id}/profile`, { method: 'PUT', body: updates }),
   submitDocuments: (id: string, documents: { cvName: string; cvUrl?: string; biName: string; biUrl?: string; diplomaName: string; diplomaUrl?: string }) => request<AppState>(`/users/${id}/documents`, { method: 'PUT', body: documents }),
+  getUserDocuments: (id: string) => request<User['documents']>(`/users/${id}/documents`),
   updateDocumentStatus: (id: string, status: DocumentStatus) => request<AppState>(`/users/${id}/document-status`, { method: 'PUT', body: { status } }),
   updateApplicationDocumentStatus: (id: string, status: DocumentStatus) => request<AppState>(`/applications/${id}/document-status`, { method: 'PUT', body: { status } }),
   sendMessage: (message: Omit<Message, 'id' | 'timestamp' | 'read'> & { senderRole?: UserRole }) => request<AppState>('/messages', { method: 'POST', body: message }),

@@ -151,6 +151,13 @@ const App: React.FC = () => {
         setIsLoadingData(true);
         const storedUserId = typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEYS.userId) : null;
         const storedActiveView = typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEYS.activeView) : null;
+        if (!storedUserId) {
+          const bootstrap = await api.getBootstrap();
+          setSystemConfig(bootstrap.systemConfig || defaultSystemConfig);
+          setApiError(null);
+          return;
+        }
+
         const state = await syncState(api.getState(), storedUserId);
 
         if (storedUserId) {
@@ -182,7 +189,7 @@ const App: React.FC = () => {
 
     const intervalId = window.setInterval(() => {
       void syncState(api.getState(), user.id).catch(() => undefined);
-    }, 15000);
+    }, 30000);
 
     return () => window.clearInterval(intervalId);
   }, [user?.id]);
@@ -728,6 +735,7 @@ const App: React.FC = () => {
                   onRefreshApplications={async () => {
                     await syncState(api.getState(), user.id);
                   }}
+                  onLoadCandidateDocuments={(candidateId) => api.getUserDocuments(candidateId)}
                   onUpdateStatus={(appId, status, interviewDate) => {
                     void updateApplicationStatus(appId, status, interviewDate);
                   }}

@@ -683,17 +683,41 @@ function fetch_system_config(PDO $pdo): array
     ];
 }
 
-function fetch_users(PDO $pdo): array
+function fetch_user_documents_map(PDO $pdo): array
 {
-    $users = $pdo->query('SELECT * FROM users ORDER BY created_at ASC')->fetchAll();
-
     $documentsRows = $pdo->query('SELECT * FROM user_documents ORDER BY updated_at ASC, created_at ASC, id ASC')->fetchAll();
     $documentsByUser = [];
     foreach ($documentsRows as $row) {
         $documentsByUser[$row['user_id']][$row['document_type']] = $row;
     }
 
-    return array_map(static function (array $row) use ($documentsByUser): array {
+    return $documentsByUser;
+}
+
+function format_user_documents(array $userDocs, bool $includeUrls = false): array
+{
+    return [
+        'cvName' => $userDocs['CV']['file_name'] ?? null,
+        'cvUrl' => $includeUrls ? ($userDocs['CV']['file_url'] ?? null) : null,
+        'biName' => $userDocs['BI']['file_name'] ?? null,
+        'biUrl' => $includeUrls ? ($userDocs['BI']['file_url'] ?? null) : null,
+        'diplomaName' => $userDocs['DIPLOMA']['file_name'] ?? null,
+        'diplomaUrl' => $includeUrls ? ($userDocs['DIPLOMA']['file_url'] ?? null) : null,
+    ];
+}
+
+function fetch_documents_for_user(PDO $pdo, string $userId, bool $includeUrls = true): array
+{
+    $documentsByUser = fetch_user_documents_map($pdo);
+    return format_user_documents($documentsByUser[$userId] ?? [], $includeUrls);
+}
+
+function fetch_users(PDO $pdo, bool $includeDocumentUrls = false): array
+{
+    $users = $pdo->query('SELECT * FROM users ORDER BY created_at ASC')->fetchAll();
+    $documentsByUser = fetch_user_documents_map($pdo);
+
+    return array_map(static function (array $row) use ($documentsByUser, $includeDocumentUrls): array {
         $userDocs = $documentsByUser[$row['id']] ?? [];
         return [
             'id' => $row['id'],
@@ -703,14 +727,7 @@ function fetch_users(PDO $pdo): array
             'avatar' => $row['avatar'],
             'restrictions' => $row['restrictions_json'] ? decode_json($row['restrictions_json']) : null,
             'documentStatus' => $row['document_status'],
-            'documents' => [
-                'cvName' => $userDocs['CV']['file_name'] ?? null,
-                'cvUrl' => $userDocs['CV']['file_url'] ?? null,
-                'biName' => $userDocs['BI']['file_name'] ?? null,
-                'biUrl' => $userDocs['BI']['file_url'] ?? null,
-                'diplomaName' => $userDocs['DIPLOMA']['file_name'] ?? null,
-                'diplomaUrl' => $userDocs['DIPLOMA']['file_url'] ?? null,
-            ],
+            'documents' => format_user_documents($userDocs, $includeDocumentUrls),
             'birthDate' => $row['birth_date'],
             'gender' => $row['gender'],
             'address' => $row['address'],
@@ -968,7 +985,7 @@ function refresh_test_availability(PDO $pdo): void
 
 function fetch_notifications(PDO $pdo): array
 {
-    $rows = $pdo->query('SELECT * FROM notifications ORDER BY created_at DESC LIMIT 200')->fetchAll();
+    $rows = $pdo->query('SELECT * FROM notifications ORDER BY created_at DESC LIMIT 50')->fetchAll();
     return array_map(static function (array $row): array {
         return [
             'id' => $row['id'],
@@ -985,7 +1002,7 @@ function fetch_notifications(PDO $pdo): array
 
 function fetch_messages(PDO $pdo): array
 {
-    $rows = $pdo->query('SELECT * FROM messages ORDER BY created_at DESC LIMIT 500')->fetchAll();
+    $rows = $pdo->query('SELECT * FROM messages ORDER BY created_at DESC LIMIT 100')->fetchAll();
     return array_map(static function (array $row): array {
         return [
             'id' => $row['id'],
@@ -1004,7 +1021,7 @@ function fetch_messages(PDO $pdo): array
 
 function fetch_audit_logs(PDO $pdo): array
 {
-    $rows = $pdo->query('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 500')->fetchAll();
+    $rows = $pdo->query('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100')->fetchAll();
     return array_map(static function (array $row): array {
         return [
             'id' => $row['id'],

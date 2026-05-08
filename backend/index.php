@@ -211,6 +211,15 @@ try {
         ]);
     }
 
+    if ($path === '/api/bootstrap' && $method === 'GET') {
+        json_response([
+            'ok' => true,
+            'data' => [
+                'systemConfig' => fetch_system_config($pdo),
+            ],
+        ]);
+    }
+
     if ($path === '/api/state' && $method === 'GET') {
         state_response($pdo);
     }
@@ -438,6 +447,12 @@ try {
             json_response(['ok' => false, 'message' => 'A vaga já atingiu o limite máximo de candidatos.'], 409);
         }
 
+        $resolvedCvUrl = (string) ($body['cvUrl'] ?? '');
+        if ($resolvedCvUrl === '') {
+            $candidateDocuments = fetch_documents_for_user($pdo, $candidateId, true);
+            $resolvedCvUrl = (string) ($candidateDocuments['cvUrl'] ?? '');
+        }
+
         $stmt = $pdo->prepare(
             'INSERT INTO applications (id, job_id, candidate_id, status, workflow_status, applied_at, cv_url, test_scheduled_at)
              VALUES (:id, :job_id, :candidate_id, :status, :workflow_status, :applied_at, :cv_url, :test_scheduled_at)'
@@ -449,7 +464,7 @@ try {
             'status' => $body['status'] ?? 'PENDING_CV',
             'workflow_status' => ($candidate['document_status'] ?? '') === 'APPROVED' ? 'DOCUMENTOS_APROVADOS' : 'DOCUMENTOS_PENDENTES',
             'applied_at' => $body['appliedAt'] ?? now_iso(),
-            'cv_url' => $body['cvUrl'] ?? '',
+            'cv_url' => $resolvedCvUrl,
             'test_scheduled_at' => combine_test_datetime($job['test_date'] ?? null, $job['test_time'] ?? null),
         ]);
         notify_role($pdo, 'MANAGER', 'Novo candidato submetido', sprintf('Novo candidato submetido para a vaga %s.', $job['title']), 'NEW_APPLICATION', 'CANDIDATE');
@@ -630,6 +645,13 @@ try {
         ]);
         audit($pdo, null, 'Perfil atualizado: ' . $matches[1], 'Profile');
         json_response(['ok' => true, 'data' => fetch_state($pdo)]);
+    }
+
+    if (preg_match('#^/api/users/([^/]+)/documents$#', $path, $matches) && $method === 'GET') {
+        json_response([
+            'ok' => true,
+            'data' => fetch_documents_for_user($pdo, $matches[1], true),
+        ]);
     }
 
     if (preg_match('#^/api/users/([^/]+)/documents$#', $path, $matches) && ($method === 'PUT' || $method === 'PATCH')) {

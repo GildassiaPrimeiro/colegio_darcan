@@ -91,13 +91,21 @@ const CandidatePortal: React.FC<CandidatePortalProps> = ({
     experience: user.experience || '3 anos de experiência em recrutamento e seleção em Angola',
     birthDate: user.birthDate || '',
     gender: user.gender || '',
-    cvName: user.documents?.cvName || 'curriculo_v1_2024.pdf',
+    cvName: user.documents?.cvName || '',
     cvUrl: user.documents?.cvUrl || '',
     biName: user.documents?.biName || '',
     biUrl: user.documents?.biUrl || '',
     diplomaName: user.documents?.diplomaName || '',
     diplomaUrl: user.documents?.diplomaUrl || ''
   });
+
+  const MAX_DOCUMENT_SIZE_BYTES = 4 * 1024 * 1024;
+
+  const isPdfFile = (file: File) => {
+    const normalizedType = (file.type || '').toLowerCase();
+    const normalizedName = file.name.toLowerCase();
+    return normalizedType === 'application/pdf' || normalizedName.endsWith('.pdf');
+  };
 
   useEffect(() => {
     setCandidateProfile((current) => ({
@@ -1006,13 +1014,24 @@ const CandidatePortal: React.FC<CandidatePortalProps> = ({
                     className="hidden" 
                     accept=".pdf" 
                     onChange={async (e) => {
-                      const file = e.target.files?.[0];
+                      const selectedFile = e.target.files?.[0];
+                      const file = selectedFile && !selectedFile.type && selectedFile.name.toLowerCase().endsWith('.pdf')
+                        ? new File([selectedFile], selectedFile.name, { type: 'application/pdf' })
+                        : selectedFile;
                       if (file) {
                         if (file.type !== 'application/pdf') {
                           setFileError('Apenas documentos em formato PDF são permitidos.');
                           return;
                         }
                         setFileError(null);
+                        if (!isPdfFile(file)) {
+                          setFileError('Apenas documentos em formato PDF sÃ£o permitidos.');
+                          return;
+                        }
+                        if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
+                          setFileError('Cada documento PDF deve ter no mÃ¡ximo 4 MB.');
+                          return;
+                        }
                         const cvUrl = await readFileAsDataUrl(file);
                         setCandidateProfile(prev => ({ ...prev, cvName: file.name, cvUrl }));
                       }
@@ -1040,13 +1059,24 @@ const CandidatePortal: React.FC<CandidatePortalProps> = ({
                     className="hidden" 
                     accept=".pdf" 
                     onChange={async (e) => {
-                      const file = e.target.files?.[0];
+                      const selectedFile = e.target.files?.[0];
+                      const file = selectedFile && !selectedFile.type && selectedFile.name.toLowerCase().endsWith('.pdf')
+                        ? new File([selectedFile], selectedFile.name, { type: 'application/pdf' })
+                        : selectedFile;
                       if (file) {
                         if (file.type !== 'application/pdf') {
                           setFileError('Apenas documentos em formato PDF são permitidos.');
                           return;
                         }
                         setFileError(null);
+                        if (!isPdfFile(file)) {
+                          setFileError('Apenas documentos em formato PDF sÃ£o permitidos.');
+                          return;
+                        }
+                        if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
+                          setFileError('Cada documento PDF deve ter no mÃ¡ximo 4 MB.');
+                          return;
+                        }
                         const biUrl = await readFileAsDataUrl(file);
                         setCandidateProfile(prev => ({ ...prev, biName: file.name, biUrl }));
                       }
@@ -1074,13 +1104,24 @@ const CandidatePortal: React.FC<CandidatePortalProps> = ({
                     className="hidden" 
                     accept=".pdf" 
                     onChange={async (e) => {
-                      const file = e.target.files?.[0];
+                      const selectedFile = e.target.files?.[0];
+                      const file = selectedFile && !selectedFile.type && selectedFile.name.toLowerCase().endsWith('.pdf')
+                        ? new File([selectedFile], selectedFile.name, { type: 'application/pdf' })
+                        : selectedFile;
                       if (file) {
                         if (file.type !== 'application/pdf') {
                           setFileError('Apenas documentos em formato PDF são permitidos.');
                           return;
                         }
                         setFileError(null);
+                        if (!isPdfFile(file)) {
+                          setFileError('Apenas documentos em formato PDF sÃ£o permitidos.');
+                          return;
+                        }
+                        if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
+                          setFileError('Cada documento PDF deve ter no mÃ¡ximo 4 MB.');
+                          return;
+                        }
                         const diplomaUrl = await readFileAsDataUrl(file);
                         setCandidateProfile(prev => ({ ...prev, diplomaName: file.name, diplomaUrl }));
                       }

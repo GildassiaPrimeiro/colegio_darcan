@@ -12,7 +12,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY . /var/www/html/
-COPY php/conf.d/opcache.ini /usr/local/etc/php/conf.d/zz-opcache.ini
+COPY php/conf.d/ /usr/local/etc/php/conf.d/
 
 RUN chown -R www-data:www-data /var/www/html
 

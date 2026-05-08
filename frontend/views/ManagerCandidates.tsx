@@ -7,6 +7,7 @@ interface ManagerCandidatesProps {
   jobs: Job[];
   candidates: User[];
   onRefreshApplications?: () => Promise<void>;
+  onLoadCandidateDocuments: (candidateId: string) => Promise<User['documents']>;
   onUpdateStatus: (appId: string, status: ApplicationStatus, interviewDate?: string) => void;
   onDeleteApplication: (appId: string) => Promise<void>;
   onDeleteCandidate: (candidateId: string) => Promise<void>;
@@ -62,6 +63,7 @@ const ManagerCandidates: React.FC<ManagerCandidatesProps> = ({
   jobs,
   candidates,
   onRefreshApplications,
+  onLoadCandidateDocuments,
   onUpdateStatus,
   onDeleteApplication,
   onDeleteCandidate,
@@ -79,6 +81,7 @@ const ManagerCandidates: React.FC<ManagerCandidatesProps> = ({
   const [interviewDate, setInterviewDate] = useState('');
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [previewDocument, setPreviewDocument] = useState<PreviewDocument | null>(null);
+  const [selectedDocuments, setSelectedDocuments] = useState<User['documents'] | null>(null);
 
   const formatDateTime = (value?: string | null) => {
     if (!value) return 'Sem entrevista agendada';
@@ -92,11 +95,7 @@ const ManagerCandidates: React.FC<ManagerCandidatesProps> = ({
     }
 
     void onRefreshApplications();
-    const intervalId = window.setInterval(() => {
-      void onRefreshApplications();
-    }, 15000);
-
-    return () => window.clearInterval(intervalId);
+    return undefined;
   }, [onRefreshApplications]);
 
   useEffect(() => {
@@ -196,6 +195,32 @@ const ManagerCandidates: React.FC<ManagerCandidatesProps> = ({
   const schedulingApplication = applications.find((application) => application.id === scheduleApplicationId) || null;
   const selectedCandidate = selectedItem?.candidate || null;
   const selectedJob = selectedItem?.job || null;
+
+  useEffect(() => {
+    if (!selectedCandidate?.id) {
+      setSelectedDocuments(null);
+      return undefined;
+    }
+
+    let isActive = true;
+    setSelectedDocuments(null);
+
+    void onLoadCandidateDocuments(selectedCandidate.id)
+      .then((documents) => {
+        if (isActive) {
+          setSelectedDocuments(documents || null);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setSelectedDocuments(selectedCandidate.documents || null);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [onLoadCandidateDocuments, selectedCandidate?.id]);
 
   const filteredItems = useMemo(() => {
     return queueItems.filter((item) => {
@@ -315,9 +340,9 @@ const ManagerCandidates: React.FC<ManagerCandidatesProps> = ({
 
   const documentLinks = selectedCandidate
     ? {
-        cv: selectedCandidate.documents?.cvUrl || selectedApplication?.cvUrl || null,
-        bi: selectedCandidate.documents?.biUrl || null,
-        diploma: selectedCandidate.documents?.diplomaUrl || null,
+        cv: selectedDocuments?.cvUrl || selectedApplication?.cvUrl || null,
+        bi: selectedDocuments?.biUrl || null,
+        diploma: selectedDocuments?.diplomaUrl || null,
       }
     : { cv: null, bi: null, diploma: null };
 
