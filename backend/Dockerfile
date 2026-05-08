@@ -19,4 +19,5 @@ RUN chown -R www-data:www-data /var/www/html
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 80
-CMD ["docker-entrypoint.sh"]
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["apache2-foreground"]
