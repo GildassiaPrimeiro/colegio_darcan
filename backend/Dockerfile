@@ -13,7 +13,10 @@ RUN apt-get update \
 
 COPY . /var/www/html/
 COPY php/conf.d/ /usr/local/etc/php/conf.d/
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN chown -R www-data:www-data /var/www/html
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 80
+CMD ["docker-entrypoint.sh"]
