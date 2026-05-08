@@ -1,4 +1,4 @@
-FROM php:8.2-apache
+FROM php:8.2-cli
 
 WORKDIR /var/www/html
 
@@ -7,7 +7,6 @@ RUN apt-get update \
     && pecl install redis \
     && docker-php-ext-install pdo pdo_mysql mysqli opcache \
     && docker-php-ext-enable redis opcache \
-    && a2enmod rewrite \
     && apt-get purge -y --auto-remove $PHPIZE_DEPS \
     && rm -rf /var/lib/apt/lists/*
 
@@ -18,6 +17,6 @@ COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chown -R www-data:www-data /var/www/html
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-EXPOSE 80
+EXPOSE 10000
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["apache2-foreground"]
+CMD ["php", "-S", "0.0.0.0:10000", "-t", "/var/www/html", "/var/www/html/router.php"]
