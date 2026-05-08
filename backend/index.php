@@ -184,17 +184,21 @@ if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
 }
 
 try {
-    if (!$pdo instanceof PDO) {
-        bootstrap_database();
-        $pdo = db();
-    }
-
     if ($path === '/' || $path === '/index.php') {
+        if ($method === 'HEAD') {
+            http_response_code(200);
+            exit;
+        }
+
         json_response([
             'ok' => true,
             'message' => 'API Darcan online',
-            'state' => fetch_state($pdo),
         ]);
+    }
+
+    if (!$pdo instanceof PDO) {
+        bootstrap_database();
+        $pdo = db();
     }
 
     if ($path === '/api/health' && $method === 'GET') {
