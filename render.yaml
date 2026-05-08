@@ -5,7 +5,7 @@ services:
     plan: free
     dockerContext: ./backend
     dockerfilePath: ./backend/Dockerfile
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: APP_ENV
         value: production
@@ -25,5 +25,7 @@ services:
         sync: false
       - key: MYSQLPASSWORD
         sync: false
+      - key: MYSQL_SSL_CA
+        value: /etc/ssl/certs/ca-certificates.crt
       - key: REDIS_URL
         sync: false
